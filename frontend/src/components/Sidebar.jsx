@@ -8,7 +8,7 @@ const Sidebar = () => {
   return (
 
 <div className={`h-screen sticky left-0 top-0 ${isOpen ? "w-64" : "w-20"}`}>
-<nav className="bg-gray-900 text-white flex justify-between items-center px-6 py-2 shadow h-16 border-sky-100 border-x-white">
+<nav className="bg-gray-900 text-white flex justify-between items-center px-6 py-2 shadow h-16">
 <a href="/dashboard" className="flex items-center space-x-5 rtl:space-x-reverse">
         <img src="AEGCL_logo.jpg" className="h-9 w-9" alt="AEGCL Logo" />
          <span className="self-center text-3xl font-bold whitespace-nowrap">

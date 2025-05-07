@@ -2,7 +2,6 @@ import { useParams, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import API from "../services/api";
 
-
 const formatDate = (date) =>
   date ? new Date(date).toLocaleDateString() : "N/A";
 
@@ -12,16 +11,20 @@ const TenderDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Get user role from localStorage
+  const user = JSON.parse(localStorage.getItem("user"));
+  const role = user?.role || null;
+
   useEffect(() => {
     const fetchTender = async () => {
       try {
         const res = await API.get(`/tenders/${_id}`);
-      const tenderData = res.data?.data || res.data; // Adjust based on your actual response
-      if (tenderData) {
-        setTender(tenderData);
-      } else {
-        setError("Tender not found");
-      }
+        const tenderData = res.data?.data || res.data; // Adjust based on your actual response
+        if (tenderData) {
+          setTender(tenderData);
+        } else {
+          setError("Tender not found");
+        }
       } catch (err) {
         console.error("Error fetching tender:", err);
         setError("Failed to load tender details");
@@ -123,20 +126,23 @@ const TenderDetails = () => {
             <p>{tender?.createdBy || "N/A"}</p>
           </div>
           {tender?.remarks && (
-          <div>
-            <p className="font-semibold">Remarks:</p>
-            <p>{tender.remarks}</p>
-          </div>
-        )}
+            <div>
+              <p className="font-semibold">Remarks:</p>
+              <p>{tender.remarks}</p>
+            </div>
+          )}
         </div>
-        
 
         {tender?.documents?.length > 0 && (
           <div className="mt-4">
             <p className="font-semibold mb-2">Documents:</p>
             <ul className="list-disc ml-6 space-y-1">
               {tender.documents.map((doc, index) => {
-                const fileName = doc.title || (doc.url ? decodeURIComponent(doc.url.split("/").pop().split("?")[0]) : "Unknown Document");
+                const fileName =
+                  doc.title ||
+                  (doc.url
+                    ? decodeURIComponent(doc.url.split("/").pop().split("?")[0])
+                    : "Unknown Document");
                 return (
                   <li key={index} className="flex items-center gap-2">
                     <span>📄</span>
@@ -158,7 +164,7 @@ const TenderDetails = () => {
 
       <div className="mt-6 text-center">
         <Link
-          to="/tenders"
+          to={role === "tenderowner" ? "/mytenders" : "/tenders"}
           className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
         >
           Back to Tenders List
@@ -169,7 +175,8 @@ const TenderDetails = () => {
 };
 
 export default TenderDetails;
-{/* <p className="font-semibold mb-2">Documents:</p>
+{
+  /* <p className="font-semibold mb-2">Documents:</p>
             <ul className="list-disc ml-6 space-y-1">
               {tender.documents.map((url, index) => {
                 const fileName = decodeURIComponent(url.split("/").pop().split("?")[0]);
@@ -187,4 +194,5 @@ export default TenderDetails;
                   </li>
                 );
               })}
-            </ul> */}
+            </ul> */
+}
