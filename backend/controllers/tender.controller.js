@@ -25,6 +25,7 @@ const createTender = asyncHandler(async (req, res) => {
     totalTenderValue,
     remarks,
     status,
+    
   } = req.body;
 
   if (
@@ -88,7 +89,9 @@ const createTender = asyncHandler(async (req, res) => {
     remarks,
     status,
     documents,
-    createdBy: req.user?._id || "6612c25ae3c4f26d306eabb9", // TEMP ID if auth disabled
+    // createdBy: req.user?._id || "6612c25ae3c4f26d306eabb9", // TEMP ID if auth disabled
+    createdBy: req.user._id
+
   });
 
   return res
@@ -98,7 +101,10 @@ const createTender = asyncHandler(async (req, res) => {
 
 // Get All Tenders
 const getAllTenders = asyncHandler(async (req, res) => {
-  const tenders = await Tender.find().sort({ createdAt: -1 });
+  const tenders = await Tender.find()
+  .populate("createdBy", "firstName lastName email") // Populate name and email of creator
+  .sort({ createdAt: -1 });
+
   return res
     .status(200)
     .json(new ApiResponse(200, tenders, "All tenders fetched."));
@@ -107,8 +113,8 @@ const getAllTenders = asyncHandler(async (req, res) => {
 // Get Single Tender by ID
 const getTenderById = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const tender = await Tender.findById(id);
-
+  // const tender = await Tender.findById(id);
+  const tender = await Tender.findById(req.params.id) .populate("createdBy", "firstName lastName email");
   if (!tender) {
     throw new ApiError(404, "Tender not found.");
   }
@@ -117,6 +123,18 @@ const getTenderById = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, tender, "Tender fetched successfully."));
 });
+
+// Get Tenders of from a particular Tender owner
+export const getMyTenders = async (req, res) => {
+  try {
+    const ownerId = req.user._id; // Make sure JWT middleware sets req.user
+    const tenders = await Tender.find({ createdBy: ownerId }).populate("createdBy", "firstName lastName");
+    res.status(200).json({ data: tenders });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch tenders", error });
+  }
+};
+
 
 // Update Tender
 const updateTender = asyncHandler(async (req, res) => {

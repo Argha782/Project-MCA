@@ -97,6 +97,9 @@ const TenderDetails = () => {
             <p className="font-semibold">Pre-Bid Meeting Date:</p>
             <p>{formatDate(tender?.preBidMeetingDate)}</p>
           </div>
+
+
+          
           <div>
             <p className="font-semibold">Price Bid Opening Date:</p>
             <p>{formatDate(tender?.priceBidOpeningDate)}</p>
@@ -122,8 +125,12 @@ const TenderDetails = () => {
           </div>
 
           <div>
-            <p className="font-semibold">Inviting Authority:</p>
-            <p>{tender?.createdBy || "N/A"}</p>
+            <p className="font-semibold">Created By:</p>
+            {/* <p className="font-semibold">Inviting Authority:</p> */}
+            {/* <p>{tender?.createdBy || "N/A"}</p> */}
+            {/* <p>{tender?.createdBy?.name || "N/A"}</p> */}
+            <p>{tender?.createdBy ? `${tender.createdBy.firstName} ${tender.createdBy.lastName}` : "N/A"}</p>
+
           </div>
           {tender?.remarks && (
             <div>
@@ -164,7 +171,7 @@ const TenderDetails = () => {
 
       <div className="mt-6 text-center">
         <Link
-          to={role === "tenderowner" ? "/mytenders" : "/tenders"}
+          to={role === "tenderowner" ? "/my-tenders" : "/tenders"}
           className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded transition-colors"
         >
           Back to Tenders List

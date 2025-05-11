@@ -14,7 +14,7 @@ const MyTenders = () => {
   const [documentFile, setDocumentFile] = useState([{ title: "", file: null }]);
   const [existingDocuments, setExistingDocuments] = useState([]);
 
-  const user = JSON.parse(localStorage.getItem("user")); // or from context
+  // const user = JSON.parse(localStorage.getItem("user")); // or from context
   const [newTender, setNewTender] = useState({
     tenderNo: "",
     tenderDetails: "",
@@ -30,38 +30,39 @@ const MyTenders = () => {
     totalTenderValue: "",
     status: "",
     remarks: "",
-    createdBy: user?.name || "", // set the creator's name from localStorage
+    // createdBy: user?.name || "", // set the creator's name from localStorage
   });
 
   useEffect(() => {
-    const fetchTenders = async () => {
+    const fetchMyTenders = async () => {
       try {
         setLoading(true);
+        const token = localStorage.getItem("token");
         // console.log("Fetching tenders...");
-        const res = await API.get("/tenders");
-        // console.log("Tenders data:", res.data);
+        const res = await API.get("/tenders/my-tenders", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        console.log("Tenders data:", res.data);
         const tenders = res.data.data; //  Get actual tenders list
 
-        console.log("Tenders data: ", tenders);
+        console.log("My Tenders data: ", tenders);
         if (!Array.isArray(tenders)) {
           throw new Error("Invalid data format received from API");
         }
 
-        const user = JSON.parse(localStorage.getItem("user"));
-        const filtered = tenders.filter(
-          (tender) => tender.createdBy === user._id
-        );
-
-        setTenders(filtered);
-        setLoading(false);
+        setTenders(tenders);
       } catch (err) {
-        console.error("Error fetching tenders", err);
-        alert("Failed to load tenders. Please check console for details.");
+        console.error("Error fetching my tenders", err);
+        alert("Failed to load your tenders. Check console for details.");
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchTenders().catch((err) => {
-      console.error("Unhandled error in fetchTenders:", err);
+    fetchMyTenders().catch((err) => {
+      console.error("Unhandled error in fetchMyTenders:", err);
     });
   }, []);
 
@@ -96,7 +97,7 @@ const MyTenders = () => {
       totalTenderValue: "",
       status: "Open",
       remarks: "",
-      createdBy: user?.name || "", // set the creator's name from localStorage
+      // createdBy: user?.name || "", // set the creator's name from localStorage
     });
     setDocumentFile([]);
   };
@@ -534,14 +535,14 @@ const MyTenders = () => {
                 className="p-2 border rounded col-span-2"
               />
             </div>
-            <div className="flex flex-col">
+            {/* <div className="flex flex-col">
               <label className="text-sm font-medium mb-1">
                 Inviting Authority
               </label>
               <div className="p-2 border rounded bg-gray-100 text-gray-800">
                 {user?.name}
               </div>
-            </div>
+            </div> */}
           </div>
           <button
             className="bg-green-500 text-white px-4 py-2 rounded"

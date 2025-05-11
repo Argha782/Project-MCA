@@ -51,9 +51,6 @@ const tenderSchema = new Schema(
       type: Number,
       required: true,
     },
-    // documents: [{ 
-    //   type: String // Array of Cloudinary URLs
-    // }],
     documents: [
       {
         title: { type: String},
@@ -69,9 +66,10 @@ const tenderSchema = new Schema(
       default: "Open",
     },
     createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: "User", // Admin User
-      required: false                                                          //  required: true, after authetication     
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", 
+      // required: false                                                          
+      required: true, // after authetication     
     }
   },
   { timestamps: true }

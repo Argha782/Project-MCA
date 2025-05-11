@@ -30,7 +30,7 @@ const TenderOwnerSidebar = () => {
             </Link>
           </li>
           <li>
-            <Link to="/mytenders" className="flex items-center space-x-4">
+            <Link to="/my-tenders" className="flex items-center space-x-4">
               <FaFileAlt /> {isOpen && <span>My Tenders</span>}
             </Link>
           </li>

@@ -78,7 +78,7 @@ const App = () => {
           </Route>
 
           <Route element={<PrivateRoute allowedRoles={["tenderowner"]} />}>
-            <Route path="/mytenders" element={<MyTenders/>} />
+            <Route path="/my-tenders" element={<MyTenders/>} />
           </Route>
 
           <Route path="/notifications" element={<h1>Notifications</h1>} />

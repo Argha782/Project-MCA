@@ -23,6 +23,10 @@ const Login = () => {
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
+      // Log firstName and lastName after login
+      console.log(`${user.firstName} ${user.lastName} logged in`);
+      console.log(`Role: ${user.role}`);
+
       // Redirect based on role
       if (user.role === "superadmin") {
         navigate("/dashboard");
