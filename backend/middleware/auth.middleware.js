@@ -5,13 +5,29 @@ export const verifyJWT = async (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
 
-    if (!token) return res.status(401).json({ message: "No token provided" });
+    if (!token) {
+      console.error("No token provided in request headers");
+      return res.status(401).json({ message: "No token provided" });
+    }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (verifyError) {
+      console.error("JWT verification error:", verifyError);
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+
     req.user = await User.findById(decoded.id).select("-password");
+    if (!req.user) {
+      console.error("User not found for decoded token id:", decoded.id);
+      return res.status(401).json({ message: "User not found" });
+    }
+
     next();
   } catch (err) {
-    res.status(401).json({ message: "Invalid or expired token" });
+    console.error("Unexpected error in verifyJWT middleware:", err);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
 

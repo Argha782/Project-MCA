@@ -1,8 +1,10 @@
 import { User } from "../models/user.model.js";
-import { UserLog } from "../models/userLog.model.js";
+// import { UserLog } from "../models/userLog.model.js";
+import { Tender } from "../models/tender.model.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import bcrypt from "bcrypt";
 
 // Get All Users
 export const createUser = asyncHandler(async (req, res) => {
@@ -38,8 +40,6 @@ export const createUser = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  await logUserAction(req.user._id, "Created a new tender", req);
-
   return res
     .status(201)
     .json(new ApiResponse(201, user, "User created successfully."));
@@ -48,7 +48,8 @@ export const createUser = asyncHandler(async (req, res) => {
 // Get All Users
 export const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select("-password");
+    const users = await User.find()
+    // .select("-password");
     res.status(200).json(new ApiResponse(200, users, "All users fethched."));
   } catch (err) {
     next(new ApiError("Failed to fetch users", 500));
@@ -58,7 +59,8 @@ export const getAllUsers = async (req, res, next) => {
 // Get Single User by ID
 export const getUserById = async (req, res, next) => {
   try {
-    const user = await User.findById(req.params.id).select("-password");
+    const user = await User.findById(req.params.id)
+    // .select("-password");
     if (!user) return next(new ApiError("User not found", 404));
     res.status(200).json(user);
   } catch (err) {
@@ -74,7 +76,8 @@ export const updateUser = async (req, res, next) => {
       req.params.id,
       { $set: rest },
       { new: true }
-    ).select("-password");
+    )
+    // .select("-password");
 
     if (!updatedUser) return next(new ApiError("User not found", 404));
     res.status(200).json(updatedUser);
@@ -93,31 +96,96 @@ export const deleteUser = async (req, res, next) => {
   }
 };
 
+export const userActivity = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+  
+      const user = await User.findById(id).select("firstName lastName email role lastActiveAt");
+      if (!user) return res.status(404).json({ message: "User not found" });
+  
+      const tenders = await Tender.find({ createdBy: id })
+        .sort({ updatedAt: -1 })
+        .select("tenderNo updatedAt status");
+  
+      const userData = {
+        id: user._id,
+        name: `${user.firstName} ${user.lastName}`,
+        email: user.email,
+        role: user.role,
+        isOnline: user.lastActiveAt && (new Date() - new Date(user.lastActiveAt)) < 10 * 60 * 1000,
+        lastActiveAt: user.lastActiveAt,
+        tenders,
+      };
+  
+      res.status(200).json(userData);
+    } catch (err) {
+      console.error("❌ Failed to fetch user activity:", err);
+      next(new ApiError("Unable to fetch user activity", 500));
+    }
+  };
 
-export const logUserAction = async (req, res, next) => {
+// Get current logged-in user profile
+export const getMyProfile = async (req, res) => {
   try {
-    const { userId } = req.params;
-
-    const user = await User.findById(userId).select("firstName lastName email role lastActiveAt");
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    const tenders = await Tender.find({ createdBy: userId })
-      .sort({ updatedAt: -1 })
-      .select("tenderNo updatedAt status");
-
-    const userData = {
-      id: user._id,
-      name: `${user.firstName} ${user.lastName}`,
-      email: user.email,
-      role: user.role,
-      isOnline: user.lastActiveAt && (new Date() - new Date(user.lastActiveAt)) < 10 * 60 * 1000,
-      lastActiveAt: user.lastActiveAt,
-      tenders,
-    };
-
-    res.status(200).json(userData);
+    if (!req.user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    const user = req.user.toObject();
+    delete user.password;
+    res.json(user);
   } catch (err) {
-    console.error("❌ Failed to fetch user activity:", err);
-    next(new ApiError("Unable To get User Activity Log", 500));
+    res.status(500).json({ message: "Server error" });
   }
 };
+
+// Update current logged-in user profile
+export const updateMyProfile =asyncHandler(async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { firstName, lastName, phoneNumber, department, designation } = req.body;
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { firstName, lastName, phoneNumber, department, designation },
+      { new: true }
+    ).select("-password");
+
+    if (!updatedUser) return next(new ApiError("User not found", 404));
+    res.status(200).json(updatedUser);
+  } catch (err) {
+    next(new ApiError("Failed to update user", 500));
+  }
+});
+
+// Update password for logged-in user
+// PUT /users/change-password
+export const changePassword = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+  

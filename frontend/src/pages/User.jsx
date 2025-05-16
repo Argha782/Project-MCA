@@ -1,6 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Fragment } from "react";
 import API from "../services/api.js";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import { toast } from 'react-toastify';
+import { FaEdit, FaTrash, FaEye, FaEyeSlash } from "react-icons/fa";
+import {
+  Dialog,
+  Transition,
+  TransitionChild,
+  DialogTitle,
+  DialogPanel,
+} from "@headlessui/react";
+import { useNavigate } from "react-router-dom";
 
 const User = () => {
   const [users, setUsers] = useState([]);
@@ -9,15 +18,23 @@ const User = () => {
   const [showForm, setShowForm] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [openDialog, setOpenDialog] = useState(false);
+  const navigate = useNavigate();
 
   const [newUser, setNewUser] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
+    phoneNumber: "",
+    department: "",
+    designation: "",
     role: "vendor",
   });
-  // const [editId, setEditId] = useState(null);
+  const [showPasswords, setShowPasswords] = useState({
+    password: false,
+  });
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -57,15 +74,32 @@ const User = () => {
       lastName: "",
       email: "",
       password: "",
+      phoneNumber: "",
+      department: "",
+      designation: "",
       role: "vendor",
     });
   };
 
   const validateUser = () => {
-    if (!newUser.password || newUser.password.length < 6) {
-      alert("User password must be at least 6 characters long.");
+    if (!newUser.firstName.trim() || !newUser.lastName.trim()) {
+      alert("Please enter full name.");
       return false;
     }
+
+    const emailExists = users.some(
+      (u) => u.email === newUser.email && (!editMode || u._id !== editId)
+    );
+    if (emailExists) {
+      alert("Email already in use.");
+      return false;
+    }
+
+    if (!editMode && (!newUser.password || newUser.password.length < 6)) {
+      alert("Password must be at least 6 characters long.");
+      return false;
+    }
+
     return true;
   };
 
@@ -75,60 +109,55 @@ const User = () => {
     if (!isValid) return;
 
     try {
-      // const formData = new FormData();
-
-      // Object.entries(newUser).forEach(([key, value]) => {
-      //   formData.append(key, value);
-      // });
-
-      // for (var pair of formData.entries()) {
-      //   console.log(`${pair[0]}: ${pair[1]}`);
-      // }
-
-      // const res = await API.post("/users", formData);
       const res = await API.post("/users", newUser);
-      setUsers([...users, res.data]);
+      setUsers([...users, res.data.data]);
       setShowForm(false); // Hide the form after adding
       resetForm();
+      toast.success("User added successfully")
     } catch (err) {
       console.error("Error adding user", err);
-      alert("Failed to add user");
+      toast.error("Failed to add user");
     }
   };
 
   // Function to save the edited User
-
   const saveEditedUser = async () => {
+    //  Build FormData exactly like in addUser
+    // const formData = new FormData();
+
+    // Object.entries(newUser).forEach(([key, value]) => {
+    //   formData.append(key, value);
+    // });
+
+    // documentFile.forEach((file) => {
+    //   formData.append("documents", file);
+    // });
+
     const isValid = validateUser();
     if (!isValid) return;
 
+    const updatedUser = { ...newUser };
+    if (!updatedUser.password) {
+      delete updatedUser.password;
+    } else if (updatedUser.password.length < 6) {
+      alert("Password must be at least 6 characters long.");
+      return;
+    }
+
     try {
-      //  Build FormData exactly like in addUser
-      // const formData = new FormData();
+      const res = await API.put(`/users/${editId}`, updatedUser);
 
-      // Object.entries(newUser).forEach(([key, value]) => {
-      //   formData.append(key, value);
-      // });
-
-      // documentFile.forEach((file) => {
-      //   formData.append("documents", file);
-      // });
-
-
-      const res = await API.put(`/users/${editId}`, newUser);
-      
-       //  Update local list using the returned record
-       setUsers((prev) =>
-        prev.map((u) => (u._id === editId ? res.data.data : u))
-      );
+      //  Update local list using the returned record
+      setUsers((prev) => prev.map((u) => (u._id === editId ? res.data : u)));
 
       //  Reset UI state
       setEditMode(false);
       setShowForm(false);
       resetForm();
+      toast.success("User updated successfully");
     } catch (err) {
       console.error("Error updating user", err);
-      alert("Failed to update user");
+      toast.error("Failed to update user");
     }
   };
 
@@ -136,20 +165,20 @@ const User = () => {
   const editUser = (user) => {
     setEditMode(true);
     setEditId(user._id);
-    setNewUser(user);
-    setShowForm(true);
-  };
+    setNewUser({
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      email: user.email || "",
+      phoneNumber: user.phoneNumber || "",
+      password: "", // Do not show actual password — initialize to blank
+      department: user.department || "",
+      designation: user.designation || "",
+      role: user.role || "vendor",
+    });
 
-  // const handleEdit = (user) => {
-  //   setEditId(user);
-  //   setNewUser({
-  //     firstName: user.firstName,
-  //     lastName: user.lastName,
-  //     email: user.email,
-  //     password: "", // leave blank
-  //     role: user.role,
-  //   });
-  // };
+    setShowForm(true);
+    setSearch(""); // Clear search input when editing a user to fix autofill bug
+  };
 
   // Function to delete
   const deleteUser = async (_id) => {
@@ -158,15 +187,31 @@ const User = () => {
       await API.delete(`/users/${_id}`);
       alert("User deleted.");
       setUsers(users.filter((user) => user._id !== _id));
+      toast.success("User deleted successfully");
     } catch (err) {
       console.error("Delete failed:", err);
-      alert("Error deleting user.");
+      toast.error("Failed to delete user");
+    }
+  };
+
+  // View User activity
+  const handleViewUserActivity = async (_id) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await API.get(`/users/activity/${_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setSelectedUser(res.data);
+      setOpenDialog(true);
+    } catch (err) {
+      console.error("Error loading user activity", err);
+      alert("Failed to load user activity.");
     }
   };
 
   // Filter
   const filteredUsers = users.filter((user) =>
-    [user.firstName,user.lastName, user.email].some((field) =>
+    [user.firstName, user.lastName, user.email].some((field) =>
       field?.toLowerCase().includes(search.toLowerCase())
     )
   );
@@ -194,63 +239,104 @@ const User = () => {
           <h2 className="text-xl font-semibold mb-2">
             {editMode ? "Edit User" : "New User"}
           </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <input
-          name="firstName"
-          value={newUser.firstName}
-          onChange={handleInputChange}
-          required
-          placeholder="First Name"
-          className="border p-2 rounded"
-        />
-        <input
-          name="lastName"
-          value={newUser.lastName}
-          onChange={handleInputChange}
-          required
-          placeholder="Last Name"
-          className="border p-2 rounded"
-        />
-        <input
-          name="email"
-          value={newUser.email}
-          onChange={handleInputChange}
-          required
-          type="email"
-          placeholder="Email"
-          className="border p-2 rounded"
-        />
-       
-        <input
-            name="password"
-            value={newUser.password}
-            onChange={handleInputChange}
-            required
-            type="password"
-            placeholder="Password"
-            className="border p-2 rounded"
-        />
-        
-        <select
-          name="role"
-          value={newUser.role}
-          onChange={handleInputChange}
-          required
-          className="border p-2 rounded"
-        >
-          <option value="vendor">Vendor</option>
-          <option value="tenderowner">Tender Owner</option>
-        </select>
-      </div>
-      <button
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <input
+              name="firstName"
+              value={newUser.firstName}
+              onChange={handleInputChange}
+              required
+              placeholder="First Name"
+              className="border p-2 rounded"
+            />
+            <input
+              name="lastName"
+              value={newUser.lastName}
+              onChange={handleInputChange}
+              required
+              placeholder="Last Name"
+              className="border p-2 rounded"
+            />
+            <input
+              name="email"
+              value={newUser.email}
+              onChange={handleInputChange}
+              required
+              type="email"
+              placeholder="Email"
+              className="border p-2 rounded"
+            />
+            <input
+              name="phoneNumber"
+              value={newUser.phoneNumber}
+              onChange={handleInputChange}
+              required
+              type="tel"
+              placeholder="Phone Number"
+              className="border p-2 rounded"
+            />
+
+            <div className="relative">
+              <input
+                name="password"
+                value={newUser.password}
+                onChange={handleInputChange}
+                required
+                type={showPasswords.password ? "text" : "password"}
+                placeholder="Password"
+                className="w-full border p-2 rounded"
+              />
+              <button
+                type="button"
+                onClick={() =>
+                  setShowPasswords((prev) => ({
+                    ...prev,
+                    password: !prev.password,
+                  }))
+                }
+                className="absolute right-3 top-2/4 transform -translate-y-2/4 text-gray-600"
+              >
+                {showPasswords.password ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
+
+            <select
+              name="role"
+              value={newUser.role}
+              onChange={handleInputChange}
+              required
+              className="border p-2 rounded"
+            >
+              <option value="vendor">Vendor</option>
+              <option value="tenderowner">Tender Owner</option>
+            </select>
+            <input
+              name="department"
+              value={newUser.department}
+              onChange={handleInputChange}
+              // required
+              type="text"
+              placeholder="Department"
+              className="border p-2 rounded"
+            />
+            <input
+              name="designation"
+              value={newUser.designation}
+              onChange={handleInputChange}
+              // required
+              type="text"
+              placeholder="Designation"
+              className="border p-2 rounded"
+            />
+          </div>
+          <button
             className="bg-green-500 text-white px-4 py-2 rounded"
             onClick={editMode ? saveEditedUser : addUser}
           >
             {editMode ? "Save Changes" : "Save User"}
           </button>
-      </div>
-    )}
-      
+        </div>
+      )}
+
       {/* Search */}
       <input
         type="text"
@@ -283,7 +369,7 @@ const User = () => {
                     user.role === "tenderowner"
                       ? "bg-blue-600"
                       : user.role === "vendor"
-                      ? "bg-green-600"
+                      ? "bg-green-900"
                       : "bg-gray-400"
                   }`}
                 >
@@ -302,7 +388,7 @@ const User = () => {
               <div className="absolute top-2 right-2 space-x-2">
                 <button
                   onClick={() => editUser(user)}
-                  className="text-blue-600 hover:underline text-2xl"
+                  className="text-green-600 hover:underline text-2xl"
                 >
                   <FaEdit />
                 </button>
@@ -313,10 +399,139 @@ const User = () => {
                   <FaTrash />
                 </button>
               </div>
+              <div className="absolute bottom-2 right-2 space-x-2">
+                <button
+                  onClick={() => handleViewUserActivity(user._id)}
+                  className="bg-blue-500 text-white p-1 rounded hover:bg-blue-600"
+                >
+                  Activity Log
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
+      <Transition appear show={openDialog} as={Fragment}>
+        <Dialog
+          as="div"
+          className="relative z-50"
+          onClose={() => setOpenDialog(false)}
+        >
+          <TransitionChild
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black bg-opacity-25" />
+          </TransitionChild>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <TransitionChild
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="opacity-0 scale-95"
+                enterTo="opacity-100 scale-100"
+                leave="ease-in duration-200"
+                leaveFrom="opacity-100 scale-100"
+                leaveTo="opacity-0 scale-95"
+              >
+                <DialogPanel className="w-full max-w-4xl transform overflow-hidden rounded-2xl bg-white p-6 text-left align-middle shadow-xl transition-all">
+                  <DialogTitle className="text-lg font-bold text-gray-900">
+                    👤 User Activity Log
+                  </DialogTitle>
+
+                  {selectedUser ? (
+                    <>
+                      <div className="my-4">
+                        <p className="text-md font-medium">
+                          Name: {selectedUser.name} ({selectedUser.role})
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Status:{" "}
+                          <span
+                            className={`inline-block h-3 w-3 rounded-full mr-1 ${
+                              selectedUser.isOnline
+                                ? "bg-green-500"
+                                : "bg-gray-400"
+                            }`}
+                          ></span>
+                          {selectedUser.isOnline ? "Online" : "Offline"}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Last Login:{" "}
+                          {selectedUser.lastActiveAt
+                            ? new Date(
+                                selectedUser.lastActiveAt
+                              ).toLocaleString()
+                            : "N/A"}
+                        </p>
+                      </div>
+
+                      <div className="overflow-x-auto mt-4">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead>
+                            <tr>
+                              <th className="px-4 py-2 text-left text-sm font-semibold">
+                                Tender No
+                              </th>
+                              <th className="px-4 py-2 text-left text-sm font-semibold">
+                                Last Updated
+                              </th>
+                              <th className="px-4 py-2 text-left text-sm font-semibold">
+                                Status
+                              </th>
+                              <th className="px-4 py-2 text-left text-sm font-semibold">
+                                Action
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {selectedUser.tenders.map((tender) => (
+                              <tr key={tender._id}>
+                                <td className="px-4 py-2">{tender.tenderNo}</td>
+                                <td className="px-4 py-2">
+                                  {new Date(tender.updatedAt).toLocaleString()}
+                                </td>
+                                <td className="px-4 py-2">{tender.status}</td>
+                                <td className="px-4 py-2">
+                                  <button
+                                    onClick={() =>
+                                      navigate(`/tenders/${tender._id}`)
+                                    }
+                                    className="text-blue-600 hover:underline"
+                                  >
+                                    View
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-gray-600">Loading user data...</p>
+                  )}
+
+                  <div className="absolute top-2 right-2 space-x-2">
+                    <button
+                      onClick={() => setOpenDialog(false)}
+                      className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </DialogPanel>
+              </TransitionChild>
+            </div>
+          </div>
+        </Dialog>
+      </Transition>
     </div>
   );
 };

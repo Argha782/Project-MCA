@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { Toaster } from "react-hot-toast";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -8,6 +9,7 @@ import Tenders from "./pages/Tenders";
 import MyTenders from "./pages/MyTender.jsx";
 import TenderDetails from "./pages/TenderDetails";
 import Users from "./pages/User.jsx";
+import MyProfile from "./pages/MyProfile.jsx";
 
 import Unauthorized from "./components/Unauthorized";
 import Navbar from "./components/Navbar";
@@ -58,6 +60,7 @@ const App = () => {
   return (
     <Router>
       <Layout>
+        <Toaster />
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<Navigate to="/dashboard" />} />
@@ -69,7 +72,7 @@ const App = () => {
           <Route element={<PrivateRoute allowedRoles={["superadmin", "tenderowner", "vendor"]} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/tenders/:_id" element={<TenderDetails />} />
-            <Route path="/profile" element={<h1>My Profile Page</h1>} />
+            <Route path="/profile" element={<MyProfile />} />
           </Route>
 
           <Route element={<PrivateRoute allowedRoles={["superadmin"]} />}>

@@ -3,12 +3,19 @@ import { useContext } from "react";
 import { AuthContext } from "../../auth/AuthContext";
 import { useNavigate } from "react-router-dom";
 
+import { useContext } from "react";
+import { AuthContext } from "../../auth/AuthContext";
+import { useNavigate } from "react-router-dom";
+
 const LogoutButton = () => {
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    const firstName = user?.firstName || "";
+    const lastName = user?.lastName || "";
     logout();
+    console.log(`${firstName} ${lastName} logged out`);
     navigate("/login");
   };
 
